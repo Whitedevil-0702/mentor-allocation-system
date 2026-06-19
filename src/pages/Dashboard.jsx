@@ -8,8 +8,7 @@ import {
   HiOutlineArrowUpTray,
   HiOutlinePlayCircle,
 } from 'react-icons/hi2';
-import { getMentors, getStudents, getAllocations } from '../services/dataService';
-import { getAllocationStats, getMentorWorkload } from '../services/mentorAllocation';
+import { getDashboardStats, getDashboardWorkload } from '../services/dataService';
 import StatCard from '../components/StatCard';
 import WorkloadBar from '../components/WorkloadBar';
 
@@ -17,16 +16,29 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const [stats, setStats] = useState(null);
   const [workload, setWorkload] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const students = getStudents();
-    const mentors = getMentors();
-    const allocations = getAllocations();
-    setStats(getAllocationStats(students, mentors, allocations));
-    setWorkload(getMentorWorkload(mentors, allocations, students));
+    async function load() {
+      try {
+        const [s, w] = await Promise.all([
+          getDashboardStats(),
+          getDashboardWorkload(),
+        ]);
+        setStats(s);
+        setWorkload(w);
+      } catch (err) {
+        console.error('Failed to load dashboard:', err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    load();
   }, []);
 
-  if (!stats) return null;
+  if (loading || !stats) {
+    return <div className="flex-center" style={{ height: '50vh' }}><p className="text-muted">Loading dashboard...</p></div>;
+  }
 
   const depts = Object.entries(stats.byDepartment);
 
@@ -41,59 +53,25 @@ export default function Dashboard() {
 
       {/* Stat Cards */}
       <div className="grid-4 mb-24">
-        <StatCard
-          icon={<HiOutlineAcademicCap />}
-          label="Total Students"
-          value={stats.totalStudents}
-          color="cyan"
-        />
-        <StatCard
-          icon={<HiOutlineUsers />}
-          label="Total Mentors"
-          value={stats.totalMentors}
-          color="purple"
-        />
-        <StatCard
-          icon={<HiOutlineCheckCircle />}
-          label="Allocated"
-          value={stats.allocated}
-          color="green"
-        />
-        <StatCard
-          icon={<HiOutlineExclamationTriangle />}
-          label="Pending"
-          value={stats.pending}
-          color="amber"
-        />
+        <StatCard icon={<HiOutlineAcademicCap />} label="Total Students" value={stats.totalStudents} color="cyan" />
+        <StatCard icon={<HiOutlineUsers />} label="Total Mentors" value={stats.totalMentors} color="purple" />
+        <StatCard icon={<HiOutlineCheckCircle />} label="Allocated" value={stats.allocated} color="green" />
+        <StatCard icon={<HiOutlineExclamationTriangle />} label="Pending" value={stats.pending} color="amber" />
       </div>
 
       {/* Department Breakdown */}
       {depts.length > 0 && (
         <div className="section">
-          <div className="section-header">
-            <h3>Department Breakdown</h3>
-          </div>
+          <div className="section-header"><h3>Department Breakdown</h3></div>
           <div className="grid-3">
             {depts.map(([dept, d]) => (
               <div key={dept} className="dept-card">
                 <div className="dept-card-name">{dept}</div>
                 <div className="dept-card-stats">
-                  <div className="dept-stat">
-                    <span className="dept-stat-label">Students</span>
-                    <span className="dept-stat-value">{d.students}</span>
-                  </div>
-                  <div className="dept-stat">
-                    <span className="dept-stat-label">Mentors</span>
-                    <span className="dept-stat-value">{d.mentors}</span>
-                  </div>
-                  <div className="dept-stat">
-                    <span className="dept-stat-label">Allocated</span>
-                    <span className="dept-stat-value text-success">{d.allocated}</span>
-                  </div>
-                  <div className="dept-stat">
-                    <span className="dept-stat-label">Pending</span>
-                    <span className="dept-stat-value text-warning">{d.pending}</span>
-                  </div>
+                  <div className="dept-stat"><span className="dept-stat-label">Students</span><span className="dept-stat-value">{d.students}</span></div>
+                  <div className="dept-stat"><span className="dept-stat-label">Mentors</span><span className="dept-stat-value">{d.mentors}</span></div>
+                  <div className="dept-stat"><span className="dept-stat-label">Allocated</span><span className="dept-stat-value text-success">{d.allocated}</span></div>
+                  <div className="dept-stat"><span className="dept-stat-label">Pending</span><span className="dept-stat-value text-warning">{d.pending}</span></div>
                 </div>
               </div>
             ))}
@@ -103,9 +81,7 @@ export default function Dashboard() {
 
       {/* Mentor Workload */}
       <div className="section">
-        <div className="section-header">
-          <h3>Mentor Workload</h3>
-        </div>
+        <div className="section-header"><h3>Mentor Workload</h3></div>
         <div className="card">
           {workload.length === 0 ? (
             <div className="empty-state">
@@ -117,12 +93,7 @@ export default function Dashboard() {
             <div className="flex-col gap-16">
               {workload.map((m) => (
                 <div key={m.mentor_id}>
-                  <WorkloadBar
-                    current={m.current}
-                    max={m.max}
-                    label={`${m.mentor_name} (${m.department})`}
-                    showCount
-                  />
+                  <WorkloadBar current={m.current} max={m.max} label={`${m.mentor_name} (${m.department})`} showCount />
                 </div>
               ))}
             </div>
@@ -132,19 +103,11 @@ export default function Dashboard() {
 
       {/* Quick Actions */}
       <div className="section">
-        <div className="section-header">
-          <h3>Quick Actions</h3>
-        </div>
+        <div className="section-header"><h3>Quick Actions</h3></div>
         <div className="quick-actions">
-          <button className="btn btn-secondary" onClick={() => navigate('/students')}>
-            <HiOutlineArrowUpTray /> Import Students
-          </button>
-          <button className="btn btn-secondary" onClick={() => navigate('/mentors')}>
-            <HiOutlineUsers /> Manage Mentors
-          </button>
-          <button className="btn btn-primary" onClick={() => navigate('/allocation')}>
-            <HiOutlinePlayCircle /> Run Allocation
-          </button>
+          <button className="btn btn-secondary" onClick={() => navigate('/students')}><HiOutlineArrowUpTray /> Import Students</button>
+          <button className="btn btn-secondary" onClick={() => navigate('/mentors')}><HiOutlineUsers /> Manage Mentors</button>
+          <button className="btn btn-primary" onClick={() => navigate('/allocation')}><HiOutlinePlayCircle /> Run Allocation</button>
         </div>
       </div>
     </div>

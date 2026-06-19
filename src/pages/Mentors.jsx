@@ -11,10 +11,8 @@ import {
   addMentor,
   updateMentor,
   deleteMentor,
-  getStudents,
-  getAllocations,
+  getDashboardWorkload,
 } from '../services/dataService';
-import { getMentorWorkload } from '../services/mentorAllocation';
 import AddMentor from '../components/AddMentor';
 import WorkloadBar from '../components/WorkloadBar';
 import Modal from '../components/Modal';
@@ -23,92 +21,77 @@ const DEPARTMENTS = ['CSE', 'IT', 'ECE', 'MECH', 'CIVIL'];
 
 export default function Mentors() {
   const [workload, setWorkload] = useState([]);
+  const [mentorsList, setMentorsList] = useState([]);
   const [showAdd, setShowAdd] = useState(false);
   const [editMentor, setEditMentor] = useState(null);
   const [deletingMentor, setDeletingMentor] = useState(null);
   const [expandedId, setExpandedId] = useState(null);
-  const [refresh, setRefresh] = useState(0);
   const [search, setSearch] = useState('');
   const [deptFilter, setDeptFilter] = useState('All');
+  const [loading, setLoading] = useState(true);
 
-  const reload = useCallback(() => {
-    const mentors = getMentors();
-    const allocations = getAllocations();
-    const students = getStudents();
-    setWorkload(getMentorWorkload(mentors, allocations, students));
+  const reload = useCallback(async () => {
+    try {
+      const [w, m] = await Promise.all([getDashboardWorkload(), getMentors()]);
+      setWorkload(w);
+      setMentorsList(m);
+    } catch (err) {
+      console.error('Failed to load mentors:', err);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  useEffect(() => { reload(); }, [reload, refresh]);
+  useEffect(() => { reload(); }, [reload]);
 
-  // Filter mentors by search (mentor name OR mentee name) and department
   const filteredWorkload = useMemo(() => {
     let result = workload;
-
-    // Department filter
     if (deptFilter !== 'All') {
       result = result.filter((m) => m.department === deptFilter);
     }
-
-    // Search filter — matches mentor name OR any mentee name
     if (search.trim()) {
       const q = search.toLowerCase();
       result = result.filter((m) => {
-        const mentorMatch =
-          m.mentor_name.toLowerCase().includes(q) ||
-          m.mentor_id.toLowerCase().includes(q);
-        const menteeMatch = m.mentees.some((s) =>
-          s.name.toLowerCase().includes(q) ||
-          s.student_id.toLowerCase().includes(q)
-        );
+        const mentorMatch = m.mentor_name.toLowerCase().includes(q) || m.mentor_id.toLowerCase().includes(q);
+        const menteeMatch = m.mentees.some((s) => s.name.toLowerCase().includes(q) || s.student_id.toLowerCase().includes(q));
         return mentorMatch || menteeMatch;
       });
-
-      // Auto-expand mentors that matched via mentee name
-      if (result.length > 0 && !result.some((m) => m.mentor_name.toLowerCase().includes(q))) {
-        // Matched via mentee — auto-expand those cards
-      }
     }
-
     return result;
   }, [workload, search, deptFilter]);
 
-  // Get departments that have mentors for the filter dropdown
   const departments = useMemo(() => {
     const depts = new Set(workload.map((m) => m.department).filter(Boolean));
     return ['All', ...depts];
   }, [workload]);
 
-  // Check if a mentee matches the search (for highlighting)
   const menteeMatchesSearch = (mentee) => {
     if (!search.trim()) return false;
     const q = search.toLowerCase();
     return mentee.name.toLowerCase().includes(q) || mentee.student_id.toLowerCase().includes(q);
   };
 
-  const handleAdd = (data) => {
-    addMentor(data);
-    setRefresh((r) => r + 1);
+  const handleAdd = async (data) => {
+    try { await addMentor(data); await reload(); } catch (err) { console.error(err); }
   };
 
-  const handleEdit = (data) => {
+  const handleEdit = async (data) => {
     if (editMentor) {
-      updateMentor(editMentor.mentor_id, data);
-      setEditMentor(null);
-      setRefresh((r) => r + 1);
+      try { await updateMentor(editMentor.mentor_id, data); setEditMentor(null); await reload(); } catch (err) { console.error(err); }
     }
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (deletingMentor) {
-      deleteMentor(deletingMentor.mentor_id);
-      setDeletingMentor(null);
-      setRefresh((r) => r + 1);
+      try { await deleteMentor(deletingMentor.mentor_id); setDeletingMentor(null); await reload(); } catch (err) { console.error(err); }
     }
   };
 
-  const toggleExpand = (id) => {
-    setExpandedId(expandedId === id ? null : id);
-  };
+  const toggleExpand = (id) => setExpandedId(expandedId === id ? null : id);
+
+  if (loading) {
+    return <div className="flex-center" style={{ height: '50vh' }}><p className="text-muted">Loading mentors...</p></div>;
+  }
 
   return (
     <div className="animate-fade-in">
@@ -122,74 +105,37 @@ export default function Mentors() {
         </button>
       </div>
 
-      {/* Search & Filter Bar */}
       {workload.length > 0 && (
         <div className="card mb-24">
           <div className="flex gap-12" style={{ flexWrap: 'wrap' }}>
             <div style={{ flex: 1, minWidth: '240px' }}>
               <div className="flex gap-8" style={{ alignItems: 'center' }}>
                 <HiOutlineMagnifyingGlass className="text-muted" />
-                <input
-                  className="search-input"
-                  type="text"
-                  placeholder="Search by mentor name or mentee name..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  style={{ flex: 1 }}
-                />
+                <input className="search-input" type="text" placeholder="Search by mentor name, faculty ID, or mentee name/PRN..."
+                  value={search} onChange={(e) => setSearch(e.target.value)} style={{ flex: 1 }} />
               </div>
             </div>
-            <select
-              className="filter-select"
-              value={deptFilter}
-              onChange={(e) => setDeptFilter(e.target.value)}
-            >
-              {departments.map((d) => (
-                <option key={d} value={d}>{d === 'All' ? 'All Departments' : d}</option>
-              ))}
+            <select className="filter-select" value={deptFilter} onChange={(e) => setDeptFilter(e.target.value)}>
+              {departments.map((d) => <option key={d} value={d}>{d === 'All' ? 'All Departments' : d}</option>)}
             </select>
           </div>
-          {search.trim() && (
-            <p className="text-muted mt-8" style={{ fontSize: '12px' }}>
-              Showing {filteredWorkload.length} of {workload.length} mentors
-            </p>
-          )}
+          {search.trim() && <p className="text-muted mt-8" style={{ fontSize: '12px' }}>Showing {filteredWorkload.length} of {workload.length} mentors</p>}
         </div>
       )}
 
       {workload.length === 0 ? (
-        <div className="card">
-          <div className="empty-state">
-            <div className="empty-state-icon"><HiOutlineUsers /></div>
-            <h3>No mentors added yet</h3>
-            <p>Click "Add Mentor" to start building your mentor database</p>
-          </div>
-        </div>
+        <div className="card"><div className="empty-state"><div className="empty-state-icon"><HiOutlineUsers /></div><h3>No mentors added yet</h3><p>Click "Add Mentor" to start building your mentor database</p></div></div>
       ) : filteredWorkload.length === 0 ? (
-        <div className="card">
-          <div className="empty-state">
-            <div className="empty-state-icon"><HiOutlineMagnifyingGlass /></div>
-            <h3>No results found</h3>
-            <p>No mentor or mentee matches "{search}"</p>
-          </div>
-        </div>
+        <div className="card"><div className="empty-state"><div className="empty-state-icon"><HiOutlineMagnifyingGlass /></div><h3>No results found</h3><p>No mentor or mentee matches "{search}"</p></div></div>
       ) : (
         <div className="grid-2">
           {filteredWorkload.map((m) => {
             const isExpanded = expandedId === m.mentor_id;
-            // Auto-expand if search matched a mentee inside this mentor
-            const searchMatchedMentee = search.trim() &&
-              !m.mentor_name.toLowerCase().includes(search.toLowerCase()) &&
-              m.mentees.some((s) => menteeMatchesSearch(s));
+            const searchMatchedMentee = search.trim() && !m.mentor_name.toLowerCase().includes(search.toLowerCase()) && m.mentees.some((s) => menteeMatchesSearch(s));
             const shouldShowMentees = isExpanded || searchMatchedMentee;
 
             return (
-              <div
-                key={m.mentor_id}
-                className="mentor-card"
-                onClick={() => toggleExpand(m.mentor_id)}
-                style={{ cursor: 'pointer' }}
-              >
+              <div key={m.mentor_id} className="mentor-card" onClick={() => toggleExpand(m.mentor_id)} style={{ cursor: 'pointer' }}>
                 <div className="mentor-card-header">
                   <div>
                     <div className="mentor-card-name">{m.mentor_name}</div>
@@ -197,66 +143,30 @@ export default function Mentors() {
                   </div>
                   <div className="flex gap-4">
                     <span className="badge badge-purple">{m.department}</span>
-                    <button
-                      className="btn btn-icon btn-secondary btn-sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        const mentors = getMentors();
-                        const full = mentors.find((x) => x.mentor_id === m.mentor_id);
-                        setEditMentor(full);
-                      }}
-                      title="Edit"
-                    >
-                      <HiOutlinePencilSquare />
-                    </button>
-                    <button
-                      className="btn btn-icon btn-danger btn-sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setDeletingMentor(m);
-                      }}
-                      title="Delete"
-                    >
-                      <HiOutlineTrash />
-                    </button>
+                    <button className="btn btn-icon btn-secondary btn-sm" onClick={(e) => {
+                      e.stopPropagation();
+                      const full = mentorsList.find((x) => x.mentor_id === m.mentor_id);
+                      setEditMentor(full);
+                    }} title="Edit"><HiOutlinePencilSquare /></button>
+                    <button className="btn btn-icon btn-danger btn-sm" onClick={(e) => { e.stopPropagation(); setDeletingMentor(m); }} title="Delete"><HiOutlineTrash /></button>
                   </div>
                 </div>
-
-                <div className="mentor-card-body">
-                  <WorkloadBar
-                    current={m.current}
-                    max={m.max}
-                    label="Mentee Capacity"
-                    showCount
-                  />
-                </div>
+                <div className="mentor-card-body"><WorkloadBar current={m.current} max={m.max} label="Mentee Capacity" showCount /></div>
 
                 {shouldShowMentees && m.mentees.length > 0 && (
                   <div className="mentor-card-mentees animate-fade-in">
                     <h4>Assigned Mentees ({m.mentees.length})</h4>
                     {m.mentees.map((s) => (
-                      <div
-                        key={s.student_id}
-                        className="mentee-item"
-                        style={menteeMatchesSearch(s) ? { background: 'rgba(124, 92, 252, 0.1)', borderRadius: '6px', padding: '6px 8px' } : {}}
-                      >
-                        <span style={menteeMatchesSearch(s) ? { color: '#7c5cfc', fontWeight: 600 } : {}}>
-                          {s.name}
-                        </span>
-                        <span className="text-muted">
-                          {s.student_id} · Year {s.year} · Div {s.division || '—'}
-                        </span>
+                      <div key={s.student_id} className="mentee-item"
+                        style={menteeMatchesSearch(s) ? { background: 'rgba(124, 92, 252, 0.1)', borderRadius: '6px', padding: '6px 8px' } : {}}>
+                        <span style={menteeMatchesSearch(s) ? { color: '#7c5cfc', fontWeight: 600 } : {}}>{s.name}</span>
+                        <span className="text-muted">{s.student_id} · Year {s.year} · Div {s.division || '—'}</span>
                       </div>
                     ))}
                   </div>
                 )}
-
                 {shouldShowMentees && m.mentees.length === 0 && (
-                  <div className="mentor-card-mentees animate-fade-in">
-                    <p className="text-muted" style={{ fontSize: '12px', padding: '8px 0' }}>
-                      No mentees assigned yet
-                    </p>
-                  </div>
+                  <div className="mentor-card-mentees animate-fade-in"><p className="text-muted" style={{ fontSize: '12px', padding: '8px 0' }}>No mentees assigned yet</p></div>
                 )}
               </div>
             );
@@ -264,44 +174,11 @@ export default function Mentors() {
         </div>
       )}
 
-      {/* Add Mentor Modal */}
-      <AddMentor
-        isOpen={showAdd}
-        onClose={() => setShowAdd(false)}
-        onSave={handleAdd}
-        departments={DEPARTMENTS}
-      />
-
-      {/* Edit Mentor Modal */}
-      <AddMentor
-        isOpen={!!editMentor}
-        onClose={() => setEditMentor(null)}
-        onSave={handleEdit}
-        mentor={editMentor}
-        departments={DEPARTMENTS}
-      />
-
-      {/* Delete Confirmation */}
-      <Modal
-        isOpen={!!deletingMentor}
-        onClose={() => setDeletingMentor(null)}
-        title="Delete Mentor?"
-        size="sm"
-        footer={
-          <>
-            <button className="btn btn-secondary" onClick={() => setDeletingMentor(null)}>
-              Cancel
-            </button>
-            <button className="btn btn-danger" onClick={handleDelete}>
-              Yes, Delete
-            </button>
-          </>
-        }
-      >
-        <p>
-          Are you sure you want to delete <strong>{deletingMentor?.mentor_name}</strong>?
-          This will also remove their allocation records.
-        </p>
+      <AddMentor isOpen={showAdd} onClose={() => setShowAdd(false)} onSave={handleAdd} departments={DEPARTMENTS} />
+      <AddMentor isOpen={!!editMentor} onClose={() => setEditMentor(null)} onSave={handleEdit} mentor={editMentor} departments={DEPARTMENTS} />
+      <Modal isOpen={!!deletingMentor} onClose={() => setDeletingMentor(null)} title="Delete Mentor?" size="sm"
+        footer={<><button className="btn btn-secondary" onClick={() => setDeletingMentor(null)}>Cancel</button><button className="btn btn-danger" onClick={handleDelete}>Yes, Delete</button></>}>
+        <p>Are you sure you want to delete <strong>{deletingMentor?.mentor_name}</strong>? This will also remove their allocation records.</p>
       </Modal>
     </div>
   );

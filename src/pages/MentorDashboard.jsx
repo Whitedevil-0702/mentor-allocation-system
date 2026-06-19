@@ -5,50 +5,50 @@ import {
   HiOutlineCheckCircle,
 } from 'react-icons/hi2';
 import { useAuth } from '../context/AuthContext';
-import { getMentors, getStudents, getAllocations } from '../services/dataService';
-import { getMentorWorkload } from '../services/mentorAllocation';
+import { getDashboardWorkload } from '../services/dataService';
 import StatCard from '../components/StatCard';
 import DataTable from '../components/DataTable';
 
 export default function MentorDashboard() {
   const { mentorId, mentorName } = useAuth();
   const [mentorData, setMentorData] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!mentorId) return;
-    const mentors = getMentors();
-    const students = getStudents();
-    const allocations = getAllocations();
-    const workload = getMentorWorkload(mentors, allocations, students);
-    const mine = workload.find((m) => m.mentor_id === mentorId);
-    setMentorData(mine || null);
+    if (!mentorId) { setLoading(false); return; }
+    async function load() {
+      try {
+        const workload = await getDashboardWorkload();
+        const mine = workload.find((m) => m.mentor_id === mentorId);
+        setMentorData(mine || null);
+      } catch (err) {
+        console.error('Failed to load mentor data:', err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    load();
   }, [mentorId]);
+
+  if (loading) {
+    return <div className="flex-center" style={{ height: '50vh' }}><p className="text-muted">Loading...</p></div>;
+  }
 
   if (!mentorId) {
     return (
-      <div className="animate-fade-in">
-        <div className="card">
-          <div className="empty-state">
-            <div className="empty-state-icon"><HiOutlineUserGroup /></div>
-            <h3>No Mentor Selected</h3>
-            <p>Please select your mentor profile from the sidebar dropdown to view your mentees.</p>
-          </div>
-        </div>
-      </div>
+      <div className="animate-fade-in"><div className="card"><div className="empty-state">
+        <div className="empty-state-icon"><HiOutlineUserGroup /></div>
+        <h3>No Mentor Selected</h3><p>Please select your mentor profile from the sidebar dropdown to view your mentees.</p>
+      </div></div></div>
     );
   }
 
   if (!mentorData) {
     return (
-      <div className="animate-fade-in">
-        <div className="card">
-          <div className="empty-state">
-            <div className="empty-state-icon"><HiOutlineUserGroup /></div>
-            <h3>Mentor Not Found</h3>
-            <p>The selected mentor profile could not be found.</p>
-          </div>
-        </div>
-      </div>
+      <div className="animate-fade-in"><div className="card"><div className="empty-state">
+        <div className="empty-state-icon"><HiOutlineUserGroup /></div>
+        <h3>Mentor Not Found</h3><p>The selected mentor profile could not be found.</p>
+      </div></div></div>
     );
   }
 
@@ -61,45 +61,15 @@ export default function MentorDashboard() {
 
   return (
     <div className="animate-fade-in">
-      <div className="page-header">
-        <div className="page-header-left">
-          <h1>My Mentees</h1>
-          <p>{mentorName || mentorData.mentor_name} · {mentorData.department}</p>
-        </div>
-      </div>
-
+      <div className="page-header"><div className="page-header-left"><h1>My Mentees</h1><p>{mentorName || mentorData.mentor_name} · {mentorData.department}</p></div></div>
       <div className="grid-3 mb-24">
-        <StatCard
-          icon={<HiOutlineUserGroup />}
-          label="Total Mentees"
-          value={mentorData.current}
-          color="cyan"
-        />
-        <StatCard
-          icon={<HiOutlineCheckCircle />}
-          label="Capacity Remaining"
-          value={mentorData.max - mentorData.current}
-          color="green"
-        />
-        <StatCard
-          icon={<HiOutlineAcademicCap />}
-          label="Department"
-          value={mentorData.department}
-          color="purple"
-        />
+        <StatCard icon={<HiOutlineUserGroup />} label="Total Mentees" value={mentorData.current} color="cyan" />
+        <StatCard icon={<HiOutlineCheckCircle />} label="Capacity Remaining" value={mentorData.max - mentorData.current} color="green" />
+        <StatCard icon={<HiOutlineAcademicCap />} label="Department" value={mentorData.department} color="purple" />
       </div>
-
       <div className="section">
-        <DataTable
-          columns={columns}
-          data={mentorData.mentees}
-          searchable
-          searchPlaceholder="Search mentees..."
-          pagination
-          pageSize={15}
-          emptyMessage="No mentees assigned to you yet"
-          emptyIcon={<HiOutlineUserGroup />}
-        />
+        <DataTable columns={columns} data={mentorData.mentees} searchable searchPlaceholder="Search mentees..."
+          pagination pageSize={15} emptyMessage="No mentees assigned to you yet" emptyIcon={<HiOutlineUserGroup />} />
       </div>
     </div>
   );
