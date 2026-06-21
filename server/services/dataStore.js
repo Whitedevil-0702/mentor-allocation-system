@@ -139,6 +139,105 @@ export function clearAllocations() {
 }
 
 // ============================================
+// SCORE DATA
+// ============================================
+
+export function getScoreData() {
+  return readJSON('score_data');
+}
+
+export function importScoreData(dataArray) {
+  const existing = getScoreData();
+  const existingIds = new Set(existing.map((s) => s.student_id));
+
+  const updates = [];
+  const inserts = [];
+
+  dataArray.forEach((sd) => {
+    const entry = {
+      student_id: sd.student_id || '',
+      attendance: Number(sd.attendance) || 0,
+      academic: Number(sd.academic) || 0,
+      engagement: Number(sd.engagement) || 0,
+      placement: Number(sd.placement) || 0,
+      updated_at: new Date().toISOString(),
+    };
+    if (existingIds.has(entry.student_id)) {
+      updates.push(entry);
+    } else {
+      inserts.push(entry);
+    }
+  });
+
+  // Update existing entries
+  const merged = existing.map((e) => {
+    const upd = updates.find((u) => u.student_id === e.student_id);
+    return upd ? { ...e, ...upd } : e;
+  });
+
+  writeJSON('score_data', [...merged, ...inserts]);
+  return { updated: updates.length, inserted: inserts.length, total: merged.length + inserts.length };
+}
+
+export function getStudentScoreData(studentId) {
+  const all = getScoreData();
+  return all.find((s) => s.student_id === studentId) || null;
+}
+
+export function clearScoreData() {
+  writeJSON('score_data', []);
+}
+
+// ============================================
+// MEETINGS
+// ============================================
+
+export function getMeetings() {
+  return readJSON('meetings');
+}
+
+export function addMeeting(meetingData) {
+  const meetings = getMeetings();
+  const meeting = {
+    meeting_id: nextId('MTG', meetings),
+    mentor_id: meetingData.mentor_id,
+    student_id: meetingData.student_id,
+    date: meetingData.date || '',
+    time: meetingData.time || '',
+    agenda: meetingData.agenda || '',
+    notes: meetingData.notes || '',
+    status: meetingData.status || 'scheduled',
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  };
+  meetings.push(meeting);
+  writeJSON('meetings', meetings);
+  return meeting;
+}
+
+export function updateMeeting(meetingId, updates) {
+  const meetings = getMeetings();
+  const idx = meetings.findIndex((m) => m.meeting_id === meetingId);
+  if (idx === -1) return null;
+  meetings[idx] = { ...meetings[idx], ...updates, updated_at: new Date().toISOString() };
+  writeJSON('meetings', meetings);
+  return meetings[idx];
+}
+
+export function deleteMeeting(meetingId) {
+  const meetings = getMeetings().filter((m) => m.meeting_id !== meetingId);
+  writeJSON('meetings', meetings);
+}
+
+export function getMeetingsByMentor(mentorId) {
+  return getMeetings().filter((m) => m.mentor_id === mentorId);
+}
+
+export function getMeetingsByStudent(studentId) {
+  return getMeetings().filter((m) => m.student_id === studentId);
+}
+
+// ============================================
 // UTILITY
 // ============================================
 
@@ -146,4 +245,6 @@ export function resetAll() {
   writeJSON('mentors', []);
   writeJSON('students', []);
   writeJSON('allocations', []);
+  writeJSON('score_data', []);
+  writeJSON('meetings', []);
 }

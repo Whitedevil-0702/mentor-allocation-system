@@ -8,6 +8,8 @@ import {
   HiOutlineUserGroup,
   HiOutlineBars3,
   HiOutlineXMark,
+  HiOutlineChartBar,
+  HiOutlineCalendarDays,
 } from 'react-icons/hi2';
 import { useAuth } from '../context/AuthContext';
 import { getMentors } from '../services/dataService';
@@ -17,10 +19,13 @@ const adminLinks = [
   { to: '/students', icon: <HiOutlineAcademicCap />, label: 'Students' },
   { to: '/mentors', icon: <HiOutlineUsers />, label: 'Mentors' },
   { to: '/allocation', icon: <HiOutlineClipboardDocumentList />, label: 'Allocation' },
+  { to: '/scores', icon: <HiOutlineChartBar />, label: 'Scores' },
+  { to: '/meetings', icon: <HiOutlineCalendarDays />, label: 'Meetings' },
 ];
 
 const mentorLinks = [
   { to: '/my-mentees', icon: <HiOutlineUserGroup />, label: 'My Mentees' },
+  { to: '/meetings', icon: <HiOutlineCalendarDays />, label: 'Meetings' },
 ];
 
 export default function Sidebar() {
@@ -30,7 +35,10 @@ export default function Sidebar() {
   const location = useLocation();
 
   useEffect(() => {
-    setMentors(getMentors());
+    async function load() {
+      try { const m = await getMentors(); setMentors(m); } catch {}
+    }
+    load();
   }, [role]);
 
   useEffect(() => {

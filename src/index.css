@@ -1058,3 +1058,296 @@ a { color: var(--accent); text-decoration: none; }
     width: 100%;
   }
 }
+
+/* ============================================
+   Student Success Score & Meetings CSS Styles
+   ============================================ */
+
+/* --- Risk Badges --- */
+.risk-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+}
+.risk-sm {
+  padding: 2px 6px;
+  font-size: 11px;
+}
+.risk-md {
+  padding: 4px 10px;
+  font-size: 13px;
+}
+.risk-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.risk-green {
+  background: rgba(16, 185, 129, 0.1);
+  color: #10b981;
+  border-color: rgba(16, 185, 129, 0.2);
+}
+.risk-green .risk-dot { background: #10b981; }
+
+.risk-amber {
+  background: rgba(245, 158, 11, 0.1);
+  color: #f59e0b;
+  border-color: rgba(245, 158, 11, 0.2);
+}
+.risk-amber .risk-dot { background: #f59e0b; }
+
+.risk-coral {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+  border-color: rgba(239, 68, 68, 0.2);
+}
+.risk-coral .risk-dot { background: #ef4444; }
+
+.risk-bg-green { background: #10b981; }
+.risk-bg-amber { background: #f59e0b; }
+.risk-bg-coral { background: #ef4444; }
+
+/* --- Score Breakdown --- */
+.score-breakdown {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.score-breakdown-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--border-subtle);
+  padding-bottom: 12px;
+}
+.score-total {
+  font-size: 24px;
+  font-weight: 700;
+}
+.score-total-value {
+  color: var(--text-primary);
+}
+.score-total-label {
+  color: var(--text-muted);
+  font-size: 16px;
+  font-weight: 400;
+  margin-left: 4px;
+}
+.score-formula {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px dashed var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+}
+.score-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.score-bar-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.score-bar-info {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+}
+.score-bar-track {
+  height: 8px;
+  background: var(--bg-input);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.score-bar-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.4s ease;
+}
+
+/* --- Meeting Card --- */
+.meeting-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  transition: transform 0.2s, border-color 0.2s;
+}
+.meeting-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(124, 92, 252, 0.3);
+}
+.meeting-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+.meeting-card-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.meeting-card-meta {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
+.meeting-card-body {
+  font-size: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.meeting-card-datetime {
+  font-weight: 500;
+  color: var(--text-primary);
+}
+.meeting-card-agenda, .meeting-card-notes {
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+  border-left: 3px solid var(--border-input);
+}
+.meeting-card-actions {
+  display: flex;
+  gap: 8px;
+  border-top: 1px solid var(--border-subtle);
+  padding-top: 12px;
+}
+
+/* --- Badges --- */
+.badge {
+  display: inline-flex;
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-weight: 600;
+}
+.badge-info {
+  background: rgba(56, 189, 248, 0.1);
+  color: #38bdf8;
+}
+.badge-success {
+  background: rgba(16, 185, 129, 0.1);
+  color: #10b981;
+}
+.badge-danger {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+}
+.badge-warning {
+  background: rgba(245, 158, 11, 0.1);
+  color: #f59e0b;
+}
+
+/* --- Department Heatmap --- */
+.dept-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.dept-card-name {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.dept-card-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  border-top: 1px solid var(--border-subtle);
+  padding-top: 12px;
+}
+.dept-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.dept-stat-label {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.dept-stat-value {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+/* --- Risk Summary Cards on Dashboard --- */
+.risk-summary-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 20px;
+  cursor: pointer;
+  transition: transform 0.2s, border-color 0.2s;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.risk-summary-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+.risk-summary-count {
+  font-size: 32px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+.risk-summary-label {
+  font-size: 14px;
+  font-weight: 500;
+}
+.risk-summary-bar {
+  height: 6px;
+  background: var(--bg-input);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.risk-summary-fill {
+  height: 100%;
+  border-radius: 3px;
+}
+
+/* --- Mini Meeting Component --- */
+.meeting-mini {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.meeting-mini:last-child {
+  border-bottom: none;
+}
+.meeting-mini-left {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.meeting-mini-date {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.meeting-mini-people {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+.meeting-mini-agenda {
+  font-size: 13px;
+}
+

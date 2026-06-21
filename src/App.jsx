@@ -6,6 +6,8 @@ import Students from './pages/Students';
 import Mentors from './pages/Mentors';
 import Allocation from './pages/Allocation';
 import MentorDashboard from './pages/MentorDashboard';
+import Scores from './pages/Scores';
+import Meetings from './pages/Meetings';
 
 function AppRoutes() {
   const { role } = useAuth();
@@ -19,11 +21,14 @@ function AppRoutes() {
             <Route path="/students" element={<Students />} />
             <Route path="/mentors" element={<Mentors />} />
             <Route path="/allocation" element={<Allocation />} />
+            <Route path="/scores" element={<Scores />} />
+            <Route path="/meetings" element={<Meetings />} />
             <Route path="*" element={<Navigate to="/" />} />
           </>
         ) : (
           <>
             <Route path="/my-mentees" element={<MentorDashboard />} />
+            <Route path="/meetings" element={<Meetings />} />
             <Route path="*" element={<Navigate to="/my-mentees" />} />
           </>
         )}

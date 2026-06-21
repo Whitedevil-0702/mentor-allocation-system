@@ -97,3 +97,68 @@ export async function getDashboardStats() {
 export async function getDashboardWorkload() {
   return request('/dashboard/workload');
 }
+
+export async function getRiskSummary() {
+  return request('/dashboard/risk-summary');
+}
+
+export async function getUpcomingMeetings() {
+  return request('/dashboard/upcoming-meetings');
+}
+
+// ============================================
+// SCORES
+// ============================================
+
+export async function getScores() {
+  return request('/scores');
+}
+
+export async function getStudentScore(studentId) {
+  return request(`/scores/${studentId}`);
+}
+
+export async function importScoreData(data) {
+  return request('/scores/import', {
+    method: 'POST',
+    body: JSON.stringify({ data }),
+  });
+}
+
+export async function getDepartmentRisk() {
+  return request('/scores/department-risk');
+}
+
+export async function clearScoreData() {
+  return request('/scores', { method: 'DELETE' });
+}
+
+// ============================================
+// MEETINGS
+// ============================================
+
+export async function getAllMeetings() {
+  return request('/meetings');
+}
+
+export async function getMentorMeetings(mentorId) {
+  return request(`/meetings/mentor/${mentorId}`);
+}
+
+export async function scheduleMeeting(data) {
+  return request('/meetings', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function updateMeeting(meetingId, data) {
+  return request(`/meetings/${meetingId}`, {
+    method: 'PUT',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteMeeting(meetingId) {
+  return request(`/meetings/${meetingId}`, { method: 'DELETE' });
+}
