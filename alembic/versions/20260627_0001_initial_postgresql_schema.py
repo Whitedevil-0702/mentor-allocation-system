@@ -13,6 +13,7 @@ from typing import Sequence, Union
 
 from alembic import op
 import sqlalchemy as sa
+from psycopg.errors import DuplicateObject
 
 revision: str = "20260627_0001"
 down_revision: Union[str, None] = None
@@ -25,8 +26,16 @@ meeting_status = sa.Enum("scheduled", "completed", "cancelled", name="meeting_st
 
 
 def upgrade() -> None:
-    risk_band.create(op.get_bind(), checkfirst=True)
-    meeting_status.create(op.get_bind(), checkfirst=True)
+    # Create ENUM types with IF NOT EXISTS to avoid duplicate errors
+    try:
+        op.execute("CREATE TYPE risk_band AS ENUM ('Green', 'Amber', 'Coral')")
+    except DuplicateObject:
+        pass
+    
+    try:
+        op.execute("CREATE TYPE meeting_status AS ENUM ('scheduled', 'completed', 'cancelled')")
+    except DuplicateObject:
+        pass
 
     op.create_table(
         "mentors",
