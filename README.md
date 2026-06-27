@@ -1,16 +1,38 @@
-# React + Vite
+# Mentor Allocation System
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Prototype backend and frontend for mentor allocation workflows.
 
-Currently, two official plugins are available:
+## Local Configuration
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+Copy `.env.example` to `.env` for local development and replace placeholder values as needed. Do not commit `.env`, real secrets, or source Excel files containing student PII.
 
-## React Compiler
+Required environment variables:
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- `MENTOR_EXCEL_PATH`: Path to the local mentor/student Excel workbook used by `seed_db.py`. Defaults to `Mentor Data.xlsx` at the root, falling back to `tests/fixtures/synthetic_mentor_data.xlsx` if the real file is absent.
+- `DATABASE_URL`: SQLAlchemy database URL. The local default is `sqlite:///./database.db`; the MentorOS target database is PostgreSQL.
+- `TEST_DATABASE_URL`: Database URL used for running the tests.
+- `SECRET_KEY`: Placeholder local secret for future auth integration.
 
-## Expanding the ESLint configuration
+## Seeding Local Data
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+If environment variables are omitted, the seeder uses repo-relative local defaults:
+- Excel workbook: `./Mentor Data.xlsx` (if it exists) or `./tests/fixtures/synthetic_mentor_data.xlsx`
+- Database: `sqlite:///./database.db`
+
+### Generating Synthetic Data
+For testing and onboarding, you can generate a synthetic spreadsheet containing no real student PII:
+```powershell
+python scripts/generate_synthetic_fixture.py
+```
+This generates the mock spreadsheet at `tests/fixtures/synthetic_mentor_data.xlsx`.
+
+### Running the Seeder
+To seed the database with the synthetic Excel file:
+```powershell
+$env:MENTOR_EXCEL_PATH = "tests/fixtures/synthetic_mentor_data.xlsx"
+$env:DATABASE_URL = "sqlite:///./database.db"
+python seed_db.py
+```
+
+The Excel workbook containing real student PII must never be committed to git. Always use synthetic data for testing and CI.
+

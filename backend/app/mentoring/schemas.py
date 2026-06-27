@@ -1,6 +1,13 @@
 from pydantic import BaseModel
 from typing import List, Optional
 from datetime import datetime
+from enum import Enum
+
+
+class MeetingStatus(str, Enum):
+    scheduled = "scheduled"
+    completed = "completed"
+    cancelled = "cancelled"
 
 # --- MENTORS ---
 class MentorBase(BaseModel):
@@ -38,29 +45,29 @@ class AllocationStats(BaseModel):
 class MeetingBase(BaseModel):
     mentor_id: str
     student_id: str
-    date: str
+    date: datetime
     time: Optional[str] = None
     agenda: Optional[str] = None
     notes: Optional[str] = None
-    status: str = "scheduled"
+    status: MeetingStatus = MeetingStatus.scheduled
 
 class MeetingCreate(MeetingBase):
     pass
 
 class MeetingUpdate(BaseModel):
-    date: Optional[str] = None
+    date: Optional[datetime] = None
     time: Optional[str] = None
     agenda: Optional[str] = None
     notes: Optional[str] = None
-    status: Optional[str] = None
+    status: Optional[MeetingStatus] = None
 
 class MeetingResponse(MeetingBase):
     meeting_id: str
     student_name: str
     mentor_name: str
     department: str
-    created_at: Optional[str] = None
-    updated_at: Optional[str] = None
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True

@@ -4,84 +4,69 @@ from sqlalchemy.orm import Session
 from ..models.models import Student, Mentor, Allocation
 
 def run_auto_allocation(db: Session) -> Dict[str, Any]:
-    # 1. Fetch all students, mentors, and existing allocations
-    students = db.query(Student).all()
-    mentors = db.query(Mentor).all()
-    existing_allocations = db.query(Allocation).all()
-    
-    allocated_student_ids = {a.student_id for a in existing_allocations}
-    
-    # Map mentors by ID and calculate their current allocations
-    mentor_alloc_counts = {m.mentor_id: 0 for m in mentors}
-    for a in existing_allocations:
-        if a.mentor_id in mentor_alloc_counts:
-            mentor_alloc_counts[a.mentor_id] += 1
-            
-    # Group unallocated students by department
-    students_by_dept = {}
-    for s in students:
-        if s.student_id in allocated_student_ids:
-            continue
-        dept = s.department
-        if dept not in students_by_dept:
-            students_by_dept[dept] = []
-        students_by_dept[dept].append(s)
-        
-    # Group mentors by department
-    mentors_by_dept = {}
-    for m in mentors:
-        dept = m.department
-        if dept not in mentors_by_dept:
-            mentors_by_dept[dept] = []
-        mentors_by_dept[dept].append(m)
-        
-    new_allocations = []
-    
-    # 2. Allocate department by department
-    for dept, dept_students in students_by_dept.items():
-        dept_mentors = mentors_by_dept.get(dept, [])
-        if not dept_mentors:
-            continue
-            
-        # Build min heap: (current_allocated_count, unique_counter, mentor_obj)
-        # We add unique_counter to avoid comparing Mentor objects in case of count ties
-        heap = []
-        counter = 0
-        for m in dept_mentors:
-            current_count = mentor_alloc_counts[m.mentor_id]
-            if current_count < m.max:
-                heapq.heappush(heap, (current_count, counter, m))
-                counter += 1
-                
-        if not heap:
-            continue
-            
-        for s in dept_students:
+    with db.begin():
+        # Lock mentor rows so concurrent requests serialize allocation decisions.
+        students = db.query(Student).all()
+        mentors = db.query(Mentor).with_for_update().all()
+        existing_allocations = db.query(Allocation).with_for_update().all()
+
+        allocated_student_ids = {a.student_id for a in existing_allocations}
+
+        mentor_alloc_counts = {m.mentor_id: 0 for m in mentors}
+        for a in existing_allocations:
+            if a.mentor_id in mentor_alloc_counts:
+                mentor_alloc_counts[a.mentor_id] += 1
+
+        students_by_dept = {}
+        for s in students:
+            if s.student_id in allocated_student_ids:
+                continue
+            dept = s.department
+            students_by_dept.setdefault(dept, []).append(s)
+
+        mentors_by_dept = {}
+        for m in mentors:
+            mentors_by_dept.setdefault(m.department, []).append(m)
+
+        new_allocations = []
+
+        for dept, dept_students in students_by_dept.items():
+            dept_mentors = mentors_by_dept.get(dept, [])
+            if not dept_mentors:
+                continue
+
+            heap = []
+            counter = 0
+            for m in dept_mentors:
+                current_count = mentor_alloc_counts[m.mentor_id]
+                if current_count < m.max:
+                    heapq.heappush(heap, (current_count, counter, m))
+                    counter += 1
+
             if not heap:
-                break # All mentors in department are full
-                
-            current_count, idx, m = heapq.heappop(heap)
-            
-            # Create new allocation
-            new_alloc = Allocation(student_id=s.student_id, mentor_id=m.mentor_id)
-            new_allocations.append(new_alloc)
-            
-            # Update counts
-            mentor_alloc_counts[m.mentor_id] += 1
-            new_count = mentor_alloc_counts[m.mentor_id]
-            
-            # Push back if still under max capacity
-            if new_count < m.max:
-                heapq.heappush(heap, (new_count, idx, m))
-                
-    if new_allocations:
-        db.add_all(new_allocations)
-        db.commit()
-        
+                continue
+
+            for s in dept_students:
+                if not heap:
+                    break
+
+                current_count, idx, m = heapq.heappop(heap)
+                new_allocations.append(Allocation(student_id=s.student_id, mentor_id=m.mentor_id))
+                mentor_alloc_counts[m.mentor_id] += 1
+                new_count = mentor_alloc_counts[m.mentor_id]
+
+                if new_count < m.max:
+                    heapq.heappush(heap, (new_count, idx, m))
+
+        if new_allocations:
+            db.add_all(new_allocations)
+
+        allocated_count = len(new_allocations)
+
     return {
         "success": True,
-        "allocated": len(new_allocations),
-        "total_new": len(new_allocations)
+        "allocated": allocated_count,
+        "total_new": allocated_count
     }
 
 def get_allocation_stats(db: Session) -> Dict[str, Any]:

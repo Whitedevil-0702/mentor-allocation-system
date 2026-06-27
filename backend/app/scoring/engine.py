@@ -10,12 +10,25 @@ WEIGHTS = {
 def clamp(val: float) -> float:
     return max(0.0, min(100.0, float(val)))
 
+def calculate_score(attendance: float, academic: float, engagement: float, placement: float) -> float:
+    attendance = clamp(attendance)
+    academic = clamp(academic)
+    engagement = clamp(engagement)
+    placement = clamp(placement)
+    return round(
+        WEIGHTS["attendance"] * attendance +
+        WEIGHTS["academic"] * academic +
+        WEIGHTS["engagement"] * engagement +
+        WEIGHTS["placement"] * placement,
+        2
+    )
+
 def get_risk_band(score: float) -> str:
     if score >= 70.0:
-        return "green"
+        return "Green"
     if score >= 50.0:
-        return "amber"
-    return "coral"
+        return "Amber"
+    return "Coral"
 
 def compute_score(metrics: Dict[str, float]) -> Dict[str, Any]:
     attendance = clamp(metrics.get("attendance", 0.0))
@@ -23,13 +36,7 @@ def compute_score(metrics: Dict[str, float]) -> Dict[str, Any]:
     engagement = clamp(metrics.get("engagement", 0.0))
     placement = clamp(metrics.get("placement", 0.0))
 
-    score = (
-        WEIGHTS["attendance"] * attendance +
-        WEIGHTS["academic"] * academic +
-        WEIGHTS["engagement"] * engagement +
-        WEIGHTS["placement"] * placement
-    )
-    score = round(score, 2)
+    score = calculate_score(attendance, academic, engagement, placement)
 
     return {
         "score": score,
@@ -43,7 +50,7 @@ def compute_score(metrics: Dict[str, float]) -> Dict[str, Any]:
     }
 
 def get_risk_summary(scores_list: List[Dict[str, Any]]) -> Dict[str, int]:
-    summary = {"green": 0, "amber": 0, "coral": 0, "total": len(scores_list)}
+    summary = {"Green": 0, "Amber": 0, "Coral": 0, "total": len(scores_list)}
     for s in scores_list:
         band = s["riskBand"]
         summary[band] = summary.get(band, 0) + 1
@@ -62,9 +69,9 @@ def get_department_risk(scores_list: List[Dict[str, Any]], students_list: List[A
         if dept not in dept_map:
             dept_map[dept] = {
                 "department": dept,
-                "green": 0,
-                "amber": 0,
-                "coral": 0,
+                "Green": 0,
+                "Amber": 0,
+                "Coral": 0,
                 "total": 0,
                 "totalScore": 0.0
             }
@@ -81,9 +88,9 @@ def get_department_risk(scores_list: List[Dict[str, Any]], students_list: List[A
         result.append({
             "department": d["department"],
             "avgScore": avg_score,
-            "green": d["green"],
-            "amber": d["amber"],
-            "coral": d["coral"],
+            "Green": d["Green"],
+            "Amber": d["Amber"],
+            "Coral": d["Coral"],
             "total": total
         })
 

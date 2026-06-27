@@ -30,6 +30,10 @@ env/
 *.db
 *.sqlite3
 
+# Local seed source data containing student PII
+Mentor Data.xlsx
+data/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

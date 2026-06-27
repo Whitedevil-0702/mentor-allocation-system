@@ -1,5 +1,12 @@
 from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
+from enum import Enum
+
+
+class RiskBand(str, Enum):
+    Green = "Green"
+    Amber = "Amber"
+    Coral = "Coral"
 
 class ScoreDataBase(BaseModel):
     attendance: float
@@ -23,21 +30,21 @@ class ScoreResponse(BaseModel):
     year: str
     score: float
     breakdown: ScoreBreakdown
-    riskBand: str
+    riskBand: RiskBand
 
 class ScoreImportRequest(BaseModel):
     data: List[ScoreDataCreate]
 
 class RiskSummary(BaseModel):
-    green: int
-    amber: int
-    coral: int
+    Green: int
+    Amber: int
+    Coral: int
     total: int
 
 class DeptRiskResponse(BaseModel):
     department: str
     avgScore: float
-    green: int
-    amber: int
-    coral: int
+    Green: int
+    Amber: int
+    Coral: int
     total: int

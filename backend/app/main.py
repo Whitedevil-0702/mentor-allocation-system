@@ -27,13 +27,13 @@ app.add_middleware(
 )
 
 # Include Routers with /api prefix
-app.include_router(students_router, prefix=settings.API_PREFIX)
-app.include_router(scores_router, prefix=settings.API_PREFIX)
-app.include_router(mentors_router, prefix=settings.API_PREFIX)
-app.include_router(allocations_router, prefix=settings.API_PREFIX)
-app.include_router(meetings_router, prefix=settings.API_PREFIX)
-app.include_router(dashboard_router, prefix=settings.API_PREFIX)
+app.include_router(students_router)
+app.include_router(scores_router)
+app.include_router(mentors_router)
+app.include_router(allocations_router)
+app.include_router(meetings_router)
+app.include_router(dashboard_router)
 
-@app.get("/api/health", tags=["health"])
+@app.get("/api/v1/health", tags=["health"])
 def health_check():
     return {"status": "ok", "message": "FastAPI server running successfully."}

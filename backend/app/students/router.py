@@ -2,16 +2,17 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List
 from ..core.database import get_db
+from ..core.auth import get_current_user, require_roles
 from ..models.models import Student, Allocation, ScoreData, Meeting
 from .schemas import StudentResponse, StudentImportRequest
 
-router = APIRouter(prefix="/students", tags=["students"])
+router = APIRouter(prefix="/api/v1/students", tags=["students"], dependencies=[Depends(get_current_user)])
 
-@router.get("/", response_model=List[StudentResponse])
+@router.get("/", response_model=List[StudentResponse], dependencies=[Depends(require_roles("mentor", "admin"))])
 def get_all_students(db: Session = Depends(get_db)):
     return db.query(Student).all()
 
-@router.post("/import", status_code=status.HTTP_201_CREATED)
+@router.post("/import", status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_roles("admin"))])
 def import_students(payload: StudentImportRequest, db: Session = Depends(get_db)):
     try:
         imported_count = 0
@@ -49,7 +50,7 @@ def import_students(payload: StudentImportRequest, db: Session = Depends(get_db)
         db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.delete("/")
+@router.delete("/", dependencies=[Depends(require_roles("admin"))])
 def clear_all_students(db: Session = Depends(get_db)):
     try:
         # Cascade will delete Allocations, ScoreData, and Meetings tied to students

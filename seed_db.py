@@ -1,22 +1,33 @@
 import openpyxl
 import re
-import sqlite3
 import random
-from datetime import datetime
+from datetime import datetime, timezone
 import sys
 import os
 
+REPO_ROOT = os.path.dirname(os.path.abspath(__file__))
+DEFAULT_EXCEL_PATH = os.path.join(REPO_ROOT, "Mentor Data.xlsx")
+SYNTHETIC_EXCEL_PATH = os.path.join(REPO_ROOT, "tests", "fixtures", "synthetic_mentor_data.xlsx")
+DEFAULT_DATABASE_URL = f"sqlite:///{os.path.join(REPO_ROOT, 'database.db')}"
+
+excel_path = os.environ.get("MENTOR_EXCEL_PATH")
+if not excel_path:
+    if os.path.exists(DEFAULT_EXCEL_PATH):
+        excel_path = DEFAULT_EXCEL_PATH
+    else:
+        excel_path = SYNTHETIC_EXCEL_PATH
+
+os.environ.setdefault("DATABASE_URL", os.environ.get("DATABASE_URL", DEFAULT_DATABASE_URL))
+
 # Set python path to allow importing backend module
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(REPO_ROOT)
 from backend.app.core.database import engine, Base
-from backend.app.models.models import Mentor, Student, Allocation, ScoreData, Meeting
+from backend.app.models.models import Mentor, Student, Allocation, ScoreData, Meeting, RiskBand
+from backend.app.scoring.engine import compute_score
 
 # Create tables if they do not exist
 print("Creating database tables...")
 Base.metadata.create_all(bind=engine)
-
-excel_path = r"C:\Users\ak210\Documents\Mentor Data.xlsx"
-db_path = r"c:\Users\ak210\mentor-allocation-system\database.db"
 
 wb = openpyxl.load_workbook(excel_path, data_only=True)
 sheet = wb['25-26']
@@ -200,13 +211,22 @@ try:
             engagement = random.uniform(40.0, 65.0)
             placement = random.uniform(30.0, 60.0)
             
+        computed_score = compute_score({
+            "attendance": attendance,
+            "academic": academic,
+            "engagement": engagement,
+            "placement": placement
+        })
+
         db_sd = ScoreData(
             student_id=s["student_id"],
             attendance=attendance,
             academic=academic,
             engagement=engagement,
             placement=placement,
-            updated_at=datetime.utcnow().isoformat()
+            score=computed_score["score"],
+            risk_band=RiskBand(computed_score["riskBand"]),
+            updated_at=datetime.now(timezone.utc)
         )
         db.add(db_sd)
     db.commit()
@@ -216,7 +236,7 @@ try:
         db_a = Allocation(
             student_id=a["student_id"],
             mentor_id=a["mentor_id"],
-            assigned_at=datetime.utcnow()
+            assigned_at=datetime.now(timezone.utc)
         )
         db.add(db_a)
         

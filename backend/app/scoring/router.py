@@ -1,15 +1,16 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List, Dict, Any
-from datetime import datetime
+from datetime import datetime, timezone
 from ..core.database import get_db
-from ..models.models import Student, ScoreData
+from ..core.auth import get_current_user, require_roles
+from ..models.models import Student, ScoreData, RiskBand
 from .schemas import ScoreResponse, ScoreImportRequest, RiskSummary, DeptRiskResponse
 from .engine import compute_score, get_risk_summary, get_department_risk
 
-router = APIRouter(prefix="/scores", tags=["scores"])
+router = APIRouter(prefix="/api/v1/scoring", tags=["scoring"], dependencies=[Depends(get_current_user)])
 
-@router.get("/", response_model=List[ScoreResponse])
+@router.get("/", response_model=List[ScoreResponse], dependencies=[Depends(require_roles("mentor", "admin"))])
 def get_all_scores(db: Session = Depends(get_db)):
     try:
         students = db.query(Student).all()
@@ -45,7 +46,7 @@ def get_all_scores(db: Session = Depends(get_db)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.get("/risk-summary", response_model=RiskSummary)
+@router.get("/risk-summary", response_model=RiskSummary, dependencies=[Depends(require_roles("mentor", "admin"))])
 def get_overall_risk_summary(db: Session = Depends(get_db)):
     try:
         score_data_list = db.query(ScoreData).all()
@@ -62,7 +63,7 @@ def get_overall_risk_summary(db: Session = Depends(get_db)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.get("/department-risk", response_model=List[DeptRiskResponse])
+@router.get("/department-risk", response_model=List[DeptRiskResponse], dependencies=[Depends(require_roles("mentor", "admin"))])
 def get_dept_risk_heatmap(db: Session = Depends(get_db)):
     try:
         students = db.query(Student).all()
@@ -84,7 +85,7 @@ def get_dept_risk_heatmap(db: Session = Depends(get_db)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.get("/{student_id}", response_model=ScoreResponse)
+@router.get("/{student_id}", response_model=ScoreResponse, dependencies=[Depends(require_roles("mentor", "admin"))])
 def get_student_score(student_id: str, db: Session = Depends(get_db)):
     sd = db.query(ScoreData).filter(ScoreData.student_id == student_id).first()
     if not sd:
@@ -112,7 +113,7 @@ def get_student_score(student_id: str, db: Session = Depends(get_db)):
         "riskBand": computed["riskBand"]
     }
 
-@router.post("/import", status_code=status.HTTP_201_CREATED)
+@router.post("/import", status_code=status.HTTP_201_CREATED, dependencies=[Depends(require_roles("admin"))])
 def import_score_data(payload: ScoreImportRequest, db: Session = Depends(get_db)):
     try:
         updated_count = 0
@@ -129,16 +130,22 @@ def import_score_data(payload: ScoreImportRequest, db: Session = Depends(get_db)
                     db_sd.academic = sd_data.academic
                     db_sd.engagement = sd_data.engagement
                     db_sd.placement = sd_data.placement
-                    db_sd.updated_at = datetime.utcnow().isoformat()
+                    computed = compute_score(sd_data.dict())
+                    db_sd.score = computed["score"]
+                    db_sd.risk_band = RiskBand(computed["riskBand"])
+                    db_sd.updated_at = datetime.now(timezone.utc)
                     updated_count += 1
             else:
+                computed = compute_score(sd_data.dict())
                 db_sd = ScoreData(
                     student_id=sd_data.student_id,
                     attendance=sd_data.attendance,
                     academic=sd_data.academic,
                     engagement=sd_data.engagement,
                     placement=sd_data.placement,
-                    updated_at=datetime.utcnow().isoformat()
+                    score=computed["score"],
+                    risk_band=RiskBand(computed["riskBand"]),
+                    updated_at=datetime.now(timezone.utc)
                 )
                 db.add(db_sd)
                 inserted_count += 1
@@ -154,7 +161,7 @@ def import_score_data(payload: ScoreImportRequest, db: Session = Depends(get_db)
         db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.delete("/")
+@router.delete("/", dependencies=[Depends(require_roles("admin"))])
 def clear_all_score_data(db: Session = Depends(get_db)):
     try:
         db.query(ScoreData).delete()

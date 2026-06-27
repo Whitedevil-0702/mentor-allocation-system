@@ -1,7 +1,21 @@
-from sqlalchemy import Column, String, Integer, Float, DateTime, ForeignKey
+import enum
+
+from sqlalchemy import Column, String, Integer, Float, DateTime, ForeignKey, Enum, func, text
 from sqlalchemy.orm import relationship
-from datetime import datetime
 from ..core.database import Base
+
+
+class RiskBand(str, enum.Enum):
+    Green = "Green"
+    Amber = "Amber"
+    Coral = "Coral"
+
+
+class MeetingStatus(str, enum.Enum):
+    scheduled = "scheduled"
+    completed = "completed"
+    cancelled = "cancelled"
+
 
 class Mentor(Base):
     __tablename__ = "mentors"
@@ -38,7 +52,7 @@ class Allocation(Base):
 
     student_id = Column(String, ForeignKey("students.student_id", ondelete="CASCADE"), primary_key=True)
     mentor_id = Column(String, ForeignKey("mentors.mentor_id", ondelete="CASCADE"), nullable=False)
-    assigned_at = Column(DateTime, default=datetime.utcnow)
+    assigned_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
 
     # Relationships
     student = relationship("Student", back_populates="allocation")
@@ -48,11 +62,13 @@ class ScoreData(Base):
     __tablename__ = "score_data"
 
     student_id = Column(String, ForeignKey("students.student_id", ondelete="CASCADE"), primary_key=True)
-    attendance = Column(Float, default=0.0)
-    academic = Column(Float, default=0.0)
-    engagement = Column(Float, default=0.0)
-    placement = Column(Float, default=0.0)
-    updated_at = Column(String, nullable=True)
+    attendance = Column(Float, nullable=False, default=0.0, server_default=text("0"))
+    academic = Column(Float, nullable=False, default=0.0, server_default=text("0"))
+    engagement = Column(Float, nullable=False, default=0.0, server_default=text("0"))
+    placement = Column(Float, nullable=False, default=0.0, server_default=text("0"))
+    score = Column(Float, nullable=False, default=0.0, server_default=text("0"))
+    risk_band = Column(Enum(RiskBand, name="risk_band"), nullable=False, default=RiskBand.Coral, server_default=text("'Coral'"))
+    updated_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now())
 
     # Relationships
     student = relationship("Student", back_populates="score_data")
@@ -63,13 +79,13 @@ class Meeting(Base):
     meeting_id = Column(String, primary_key=True, index=True)
     mentor_id = Column(String, ForeignKey("mentors.mentor_id", ondelete="CASCADE"), nullable=False)
     student_id = Column(String, ForeignKey("students.student_id", ondelete="CASCADE"), nullable=False)
-    date = Column(String, nullable=False)
+    date = Column(DateTime(timezone=True), nullable=False)
     time = Column(String, nullable=True)
     agenda = Column(String, nullable=True)
     notes = Column(String, nullable=True)
-    status = Column(String, default="scheduled") # scheduled, completed, cancelled
-    created_at = Column(String, nullable=True)
-    updated_at = Column(String, nullable=True)
+    status = Column(Enum(MeetingStatus, name="meeting_status"), nullable=False, default=MeetingStatus.scheduled, server_default=text("'scheduled'"))
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now())
 
     # Relationships
     mentor = relationship("Mentor", back_populates="meetings")

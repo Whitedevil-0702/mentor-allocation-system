@@ -2,7 +2,7 @@ import os
 
 class Settings:
     PROJECT_NAME: str = "Mentor Allocation System"
-    API_PREFIX: str = "/api"
+    API_PREFIX: str = "/api/v1"
     
     # Secret key for optional future auth/JWT tokens
     SECRET_KEY: str = os.getenv("SECRET_KEY", "supersecretkey123")
